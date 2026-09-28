@@ -326,3 +326,28 @@ util.func @use_typed() -> !util.list<i32> {
   %0 = util.global.load @typed_list : !util.list<i32>
   util.return %0 : !util.list<i32>
 }
+
+// -----
+
+// Tests that stores of constants that can't be an initial_value (here a
+// non-typed #util.composite) are preserved instead of being dropped.
+
+// CHECK: util.global private @composite_buffer : !util.buffer
+util.global private @composite_buffer : !util.buffer
+// CHECK: util.initializer
+util.initializer {
+  // CHECK-NEXT: %[[CST:.+]] = util.buffer.constant : !util.buffer
+  %cst = util.buffer.constant : !util.buffer = #util.composite<8xi8, [
+    dense<1> : vector<4xi8>,
+    dense<2> : vector<4xi8>,
+  ]>
+  // CHECK-NEXT: util.global.store %[[CST]], @composite_buffer : !util.buffer
+  util.global.store %cst, @composite_buffer : !util.buffer
+  util.return
+}
+// CHECK-LABEL: util.func public @use_composite_buffer
+util.func @use_composite_buffer() -> !util.buffer {
+  // CHECK: util.global.load immutable @composite_buffer : !util.buffer
+  %0 = util.global.load @composite_buffer : !util.buffer
+  util.return %0 : !util.buffer
+}
